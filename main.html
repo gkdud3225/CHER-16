@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="style.css" type="text/css">
+  <title>Main</title>
+</head>
+
+<body>
+  <script type="text/javascript">
+    // function aesEncrypt(){
+    //   var key = [];
+    //   var plaintext = document.getElementById("input").value;
+    //
+    //   var aesAlgorithmKeyGen = {
+    //     name: "AES-CBC",
+    //     length: 128
+    //   };
+    //
+    //   var aesAlgorithmEncrypt = {
+    //     name: "AES-CBC",
+    //     iv: window.crypto.getRandomValues(new Unit8Array(16))
+    //   };
+    //
+    //   // 키생성 및 데이터 암호화
+    //   window.crypto.subtle.generateKey(aesAlgorithmKeyGen, false, ["encrypt"]).then(
+    //     function(aesKey) {
+    //       return window.crypto.subtle.encrypt(aesAlgorithmEncrypt, aesKey, [plaintext]);
+    //     }
+    //   ).then(console.log.bind(console, "ciphertext: "),
+    //     console.error.bind(console, "unable to encrypt"));
+    //
+    // }
+    function aesCreateKey() { // key 생성
+      window.crypto.subtle.generateKey({
+          name: "AES-CBC",
+          length: 256,
+        },
+        false, ["encrypt", "decrypt"]
+      ).then(function(key) {
+        console.log(key);
+      }).catch(function(err) {
+        console.error(err);
+      });
+    }
+
+    function aesEncrypt() {
+      var data = document.getElementById("input").value; // 암호화할 데이터
+      window.crypto.subtle.encrypt({
+          name: "AES-CBC",
+          iv: window.crypto.getRandomValues(new Unit8Array(16)),
+        },
+        key,
+        data
+      ).then(function(encrypted) {
+        console.log(new Uint8Array(encrypted));
+      }).catch(function(err) {
+        console.error(err);
+      });
+    }
+
+    function indexedDBOK() {
+      if (!window.indexedDB) { // indexedDB 브라우저 지원여부 확인
+        window.alert("Your browser doesn't support a indexedDB.");
+      }
+      var dbName = "keyTable";
+      var dbVersion = 1.0;
+      var keyDB = {};
+      var request = window.indexedDB.open(dbName, dbVersion); // DB Open
+      var dbResult = request.result;
+
+      request.onupgradeneeded = function(event) { // db 생성 또는 버전 업그레이드시 수행
+        if (!dbResult.objectStoreNames.contains("keyTable")) { // "keyTable" object Store 생성
+          dbResult.createObjectStore("keyTable", {keyPath: "key"});
+        }
+      }
+
+      request.onsuccess = function() {
+        var transaction = db.transaction(["keyTable"], "readwrite");
+        var objectStore = transaction.objectStore("keyTable");
+
+        objectStore.get(key).onsuccess = function(event) { // key를 기준으로 indexedDB 데이터를 읽어온다
+          var data = event.target.result;
+          console.log("결과: ", data);
+          if (!data) {
+            objectStore.add();
+          }
+        }
+
+      }
+
+    }
+  </script>
+
+  <h2>Key</h2>
+  <div id="key"></div>
+  <div>
+    <h2>입력</h2><input type="text" id="input"></div>
+  <h2>출력</h2>
+  <div id="output"></div>
+  <div id="stepButton">
+    <input type="button" id="step1" value="STEP1" onclick="aesCreateKey()"></input>
+    <input type="button" id="step2" value="STEP2" ></input>
+    <input type="button" id="step3" value="STEP3"></input>
+  </div>
+</body>
+
+</html>
