@@ -9,90 +9,141 @@
 
 <body>
   <script type="text/javascript">
-    const key = function(){
+    function generateKey() {
       window.crypto.subtle.generateKey({
-            name: "AES-CBC",
-            length: 256,
-          },
-          false, ["encrypt", "decrypt"]
-        ).then(function(key) {
-          console.log(key);
+          name: "AES-CBC",
+          length: 256,
+        },
+        true, ["encrypt", "decrypt"]
+      ).then(function(key) {
+        console.log("키생성완료");
+        debugger;
+         exportKey(key);
+      }).catch(function(err) {
+        console.error(err);
+      });
+    }
+
+    function exportKey(key) {
+      window.crypto.subtle.exportKey("raw", key)
+        .then(function(keydata) {
+          console.log("key export");
+          console.log(keydata);
         }).catch(function(err) {
           console.error(err);
         });
-    };
+    }
 
-    function aesEncrypt() {
+    function aesEncrypt(key) {
       var data = document.getElementById("input").value; // 암호화할 데이터
       window.crypto.subtle.encrypt({
           name: "AES-CBC",
-          iv: window.crypto.getRandomValues(new Unit8Array(16)),
+          iv: window.crypto.getRandomValues(new Uint8Array(16)),
         },
         key,
         data
       ).then(function(encrypted) {
-        console.log(new Uint8Array(encrypted));
+        console.log(new Uint8Array(encrypted)); // 암호문을 담은 배열 반환
+        document.getElementById("output").innerHTML += encrypted; // 암호문 출력
+        localStorage.setItem(key, encrypted); //key와 암호문 local Storage에 저장
+      }).catch(function(err) {
+        console.error(err);
+      });
+    }
+
+    function aesDecrypt() {
+      window.crypto.subtle.decrypt({
+          name: "AES-CBC",
+          iv: ArrayBuffer(16),
+        },
+        key,
+        data
+      ).then(function(decrypted) {
+        console.log(new Unit8Array(decrypted));
       }).catch(function(err) {
         console.error(err);
       });
     }
 
     function indexedDBCheck() {
-      if (!window.indexedDB) { // indexedDB 브라우저 지원여부 확인
-        window.alert("Your browser doesn't support a indexedDB.");
-      }
-      var dbName = "keyDB";
-      var dbVersion = 1.0;
-      var db;
-      var objectStore;
-      var openRequest = window.indexedDB.open(dbName, dbVersion); // DB Open
-
-      openRequest.onupgradeneeded = function(e) { // db 생성 또는 버전 업그레이드시 수행
-        console.log("onupgradeneeded");
-        db = e.target.result;
-        if (!db.objectStoreNames.contains("keyTable")) { // "keyTable" object Store 생성
-          objectStore = db.createObjectStore("keyTable", {keyPath: "key"});
+      if(!document.getElementById("input").value){
+        alert("데이터를 입력하세요");
+      }else{
+        if (!window.indexedDB) { // indexedDB 브라우저 지원여부 확인
+          window.alert("Your browser doesn't support a indexedDB.");
         }
-        objectStore.add(key);
-      };
 
-      openRequest.onsuccess = function(e) {
-        console.log("onsuccess");
-        db = e.target.result;
-        var transaction = db.transaction(["keyTable"], "readwrite");
-        objectStore = transaction.objectStore("keyTable");
-        var getRequest = objectStore.get("key");
-        getRequest.onerror = function(e){
+        var dbName = "keyDB";
+        var dbVersion = 1.0;
+        var db;
+        var objectStore;
+        var openRequest = window.indexedDB.open(dbName, dbVersion); // DB Open
+
+        openRequest.onupgradeneeded = function(e) { // db 생성 또는 버전 업그레이드시 수행
+          console.log("onupgradeneeded");
+          db = e.target.result;
+          if (!db.objectStoreNames.contains("keyTable")) { // "keyTable" object Store 생성
+            objectStore = db.createObjectStore("keyTable", {keyPath: "id"});
+          }
+        };
+
+        openRequest.onsuccess = function(e) {
+          console.log("DB open");
+          db = e.target.result;
+          var transaction = db.transaction(["keyTable"], "readwrite");
+          objectStore = transaction.objectStore("keyTable");
+          var countRequest = objectStore.count();
+          countRequest.onsuccess = function(){
+            if (countRequest.result == 0) { // key가 없으면 생성
+              generateKey();
+
+              var addRequest = objectStore.add({
+                id: "123",
+                key: "hello"
+              });
+              addRequest.onerror = function(e) {
+                console.log("error", e.target.error.name);
+              };
+              addRequest.onsuccess = function(e) {
+                console.log("add success");
+              };
+            }
+          };
+          countRequest.onerror = function(e){
+            console.log("error", e.target.error.name);
+          }
+
+          // key값이 존재하면 가져온다.(get)
+          var getRequest = objectStore.get("123");
+
+          getRequest.onerror = function(e) {
+            console.log("error", e.target.error.name);
+          };
+
+          getRequest.onsuccess = function(e) {
+            console.log("get success");
+            aesEncrypt(e.target.result.key);
+          };
+
+        };
+        openRequest.onerror = function(e) {
           console.log("error", e.target.error.name);
         };
-        getRequest.onsuccess = function(e){
-          console.log("get success");
-          console.log(e);
-        };
+      }
 
-        // var addRequest = objectStore.add();
-        // addRequest.onerror = function(e){
-        //   console.log("error", e.target.error.name);
-        // };
-        // addRequest.onsuccess = function(e){
-        //   console.log("add success");
-        // };
-      };
-      openRequest.onerror = function(e){
-        console.log("error");
-        console.error(e);
-      };
     }
 
   </script>
 
   <h2>Key</h2>
   <div id="key"></div>
-  <div><h2>입력</h2><input type="text" id="input"></div>
-  <h2>출력</h2><div id="output"></div>
+  <div>
+    <h2>입력</h2><input type="text" id="input"></div>
+  <h2>출력</h2>
+  <div id="output"></div>
   <div id="stepButton">
     <input type="button" id="step1" value="STEP1" onclick="indexedDBCheck()"></input>
-    <input type="button" id="step2" value="STEP2" ></input>
+    <input type="button" id="step2" value="STEP2"></input>
     <input type="button" id="step3" value="STEP3"></input>
   </div>
 </body>
