@@ -11,6 +11,7 @@
   <script type="text/javascript">
     var dbName = "keyDB";
     var dbVersion = 1.0;
+
     var generateKey = function(callback) {
       return window.crypto.subtle.generateKey({
           name: "AES-CBC",
@@ -18,7 +19,6 @@
         },
         true, ["encrypt", "decrypt"]
       ).then(function(key) {
-        console.log("key generate 완료");
         callback(key);
       }).catch(function(err) {
         console.error(err);
@@ -35,7 +35,6 @@
         key,
         data
       ).then(function(encrypted) {
-        console.log(new Uint8Array(encrypted)); // 암호문을 담은 배열 반환
         debugger;
         callback(encrypted);
       }).catch(function(err) {
@@ -95,6 +94,7 @@
                 };
                 addRequest.onsuccess = function(e) {
                   console.log("add success");
+                  alert("key생성");
                 };
               });
             } // end if
@@ -107,6 +107,7 @@
               };
 
               getRequest.onsuccess = function(e) {
+                var encrypted;
                 console.log("get success");
                 aesEncrypt(e.target.result.key, function(encrypted) {
                   document.getElementById("key").innerHTML = "generated Secret Key: ";
@@ -114,49 +115,79 @@
                   document.getElementById("output").innerHTML = "cipherText: ";
                   document.getElementById("output").innerHTML += new Uint8Array(encrypted); // 암호문 출력
                   localStorage.setItem(e.target.result.key, new Uint8Array(encrypted)); //key와 암호문 local Storage에 저장
-
+                  encrypted = new Object(localStorage.getItem(key));
+                  console.log(encrypted);
                 });
-              };
-            }
+                aesDecrypt(e.target.result.key, new Uint8Array(encrypted), function(decrypted){
+                  document.getElementById("output").innerHTML += new Uint8Array(decrypted);
+                });
+              }; // end getRequest.onsuccess
+            } // end else
 
+          }; // end request.onsuccess
+          request.onerror = function(e) {
+            console.log("error", e.target.error.name);
           };
         };
-        request.onerror = function(e) {
+        openRequest.onerror = function(e) {
           console.log("error", e.target.error.name);
         };
       };
-      openRequest.onerror = function(e) {
-        console.log("error", e.target.error.name);
-      };
     } // end dataEncrypt()
 
-    function dataDecrypt() {
+    // function dataDecrypt() {
+    //   var openRequest = window.indexedDB.open(dbName, dbVersion); // DB Open
+    //   openRequest.onsuccess = function(e) {
+    //     console.log("DB open");
+    //     var db = e.target.result;
+    //     var request = db.transaction(["keyTable"], "readwrite").objectStore("keyTable").count();
+    //     request.onsuccess = function() {
+    //       generateKey(function(key) {
+    //         var cipherData = new Object(localStorage.getItem(key)); // localStorage로부터 가져온 암호문
+    //
+    //         document.getElementById("output").innerHTML = "cipherText from localStorage: ";
+    //         document.getElementById("output").innerHTML += cipherData; // 암호문 출력
+    //
+    //         var getRequest = db.transaction(["keyTable"], "readwrite").objectStore("keyTable").get("123"); // key 가져오기
+    //
+    //         getRequest.onerror = function(e) {
+    //           console.log("error", e.target.error.name);
+    //         };
+    //
+    //         getRequest.onsuccess = function(e) {
+    //           console.log("get success");
+    //           aesDecrypt(key, new Uint8Array(cipherData), function(decrypted) {
+    //             document.getElementById("key").innerHTML = "Secret Key: ";
+    //             document.getElementById("key").innerHTML += key; // 복호화에 사용된 대칭키
+    //             document.getElementById("output").innerHTML += "복호화 결과: ";
+    //             document.getElementById("output").innerHTML += new Uint8Array(decrypted); // 복호화 결과 출력
+    //           }); // end aesDecrypt
+    //         }; // end getRequest.onsuccess
+    //       }); // end generateKey
+    //     }; // end request.onsuccess
+    //
+    //     request.onerror = function(e) {
+    //       console.log("error", e.target.error.name);
+    //     };
+    //   }; // end openRequest.onsuccess
+    //
+    //   openRequest.onerror = function(e) {
+    //     console.log("error", e.target.error.name);
+    //   };
+    //
+    // }
+
+    function clearDB() {
       var openRequest = window.indexedDB.open(dbName, dbVersion); // DB Open
       openRequest.onsuccess = function(e) {
-        console.log("DB open");
         var db = e.target.result;
         var request = db.transaction(["keyTable"], "readwrite").objectStore("keyTable").count();
         request.onsuccess = function() {
-          generateKey(function(key) {
-            var cipherData = localStorage.getItem(key);
-            console.log(cipherData);
-            document.getElementById("output").innerHTML = "cipherText from localStorage: ";
-            document.getElementById("output").innerHTML += cipherData; // 암호문 출력
-            // key 가져오기
-            var getRequest = db.transaction(["keyTable"], "readwrite").objectStore("keyTable").get("123");
-
-            getRequest.onerror = function(e) {
-              console.log("error", e.target.error.name);
-            };
-
-            getRequest.onsuccess = function(e) {
-              console.log("get success");
-              aesDecrypt(cipherData, e.target.result.key, function(decrypted) {
-                document.getElementById("output").innerHTML += "복호화 결과: ";
-                document.getElementById("output").innerHTML += new Uint8Array(decrypted); // 복호화 결과 출력
-              });
-            };
-          });
+          var objectStoreRequest = db.transaction(["keyTable"], "readwrite").objectStore("keyTable").clear("123");
+          localStorage.clear();
+          objectStoreRequest.onsuccess = function(e) {
+            alert("삭제완료");
+          }
         };
         request.onerror = function(e) {
           console.log("error", e.target.error.name);
@@ -166,18 +197,19 @@
         console.log("error", e.target.error.name);
       };
     }
+
   </script>
 
   <h2>Key</h2>
   <div id="key"></div>
   <div>
-    <h2>입력</h2><input type="text" id="input"></div>
+    <h2>입력</h2><input type="text" id="input" ></div>
   <h2>출력</h2>
   <div id="output"></div>
   <div id="stepButton">
     <input type="button" id="step1" value="STEP1" onclick="dataEncrypt()"></input>
     <input type="button" id="step2" value="STEP2" onclick="dataDecrypt()"></input>
-    <input type="button" id="step3" value="STEP3"></input>
+    <input type="button" id="step3" value="STEP3" onclick="clearDB()"></input>
   </div>
 </body>
 
