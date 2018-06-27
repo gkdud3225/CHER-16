@@ -12,9 +12,7 @@
 
 > **STEP1 Click:**
 
-> IndexedDB 에서 대칭키 가져오기 → (없다면 키 생성해서 저장)
-
-> → 가져온 대칭키로 "입력"값 암호화 → 키값과 암호문을 LocalStorage에 저장
+> IndexedDB 에서 대칭키 가져오기 → (없다면 키 생성해서 저장) → 가져온 대칭키로 "입력"값 암호화 → 키값과 암호문을 LocalStorage에 저장
 
 > ***localStorage.setItem(key, encrypted)***
 
@@ -26,9 +24,7 @@
 
 > ***localStorage.getItem(key)***
 
-> → IndexedDB에서 대칭키 가져오기 → 가져온 대칭키로 암호문을 복호화
-
-> → "출력"에 복호화된 결과 출력
+> → IndexedDB에서 대칭키 가져오기 → 가져온 대칭키로 암호문을 복호화 → "출력"에 복호화된 결과 출력
 
 ### Delete
 
